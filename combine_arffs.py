@@ -228,6 +228,6 @@ def print_indices(example_to_use = 'train_1'):
 
 
 if __name__ == '__main__':
-    #combine_save_data()
-    #add_labels_to_data()
-    print_indices()
+    combine_save_data()
+    add_labels_to_data()
+    #print_indices()
