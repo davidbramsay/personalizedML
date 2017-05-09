@@ -2,5 +2,6 @@ data
 pickles
 feature_violinplots
 multilayer_tf_example.py
+GPs
 RNN
 MNIST_data
