@@ -146,7 +146,7 @@ def add_labels_to_data(example_to_use = 'train_1'):
     print "Valence timeseries data below, enter the number of the indices you'd like to predict, separated by commas"
     for i, name in enumerate(df_ex_valence.columns.values):
         print '(' + str(i) + ') ' + name
-    input = raw_input("Enter comma separated values: ")
+    input = raw_input("Enter comma separated values (INDEX of features you want to have as labels): ")
     v_inds = [int(a.strip()) for a in input.split(',')]
 
     v_names = {}
@@ -182,6 +182,7 @@ def add_labels_to_data(example_to_use = 'train_1'):
     print a_names
     print c_names
 
+
     print "Updating all files to have 'label' in their name if we've noted it should be predicted..."
     for root, dirs, files in os.walk('./pickles'):
         for file in files:
@@ -207,27 +208,108 @@ def add_labels_to_data(example_to_use = 'train_1'):
 
 
 
-def print_indices(example_to_use = 'train_1'):
+def add_classes_and_combine_pickles():
+
+    #get all names
+    names = set()
+    for _, _, files in os.walk('./pickles'):
+        for file in files:
+            names.update(["_".join(file.split('_')[0:2])])
+
+
+    for name in names:
+
+        print 'restructuring ' + name
+        #open classes, valence, and arousal pickles
+        df_valence = pd.read_pickle('./pickles/' + name + '_valence.pkl')
+        df_arousal = pd.read_pickle('./pickles/' + name + '_arousal.pkl')
+        df_classes = pd.read_pickle('./pickles/' + name + '_classes.pkl')
+
+        #add classes (through time) to valence and save
+        df_final_valence = pd.concat([df_valence, df_classes.reindex(df_valence.index.values, method='pad')], axis=1)
+        df_final_valence = df_final_valence.T.groupby(level=0).first().T # de-duplicate columns
+        df_final_valence.to_pickle('./pickles/' + name + '_valence.pkl')
+
+        #add classes (extend through time) to arousal and save
+        df_final_arousal = pd.concat([df_arousal, df_classes.reindex(df_arousal.index.values, method='pad')], axis=1)
+        df_final_arousal = df_final_arousal.T.groupby(level=0).first().T # de-duplicate columns
+        df_final_arousal.to_pickle('./pickles/' + name + '_arousal.pkl')
+
+        #re-label features that do not have recola, valence, or arousal in the name with _v _a for valence and arousal
+        label_array = {}
+        for i, col_name in enumerate(df_valence.columns.values):
+            if not any([word in col_name for word in ['recola','valence','arousal']]):
+                label_array[col_name] = col_name + '_v'
+
+        df_valence = df_valence.rename(columns=label_array)
+
+        label_array = {}
+        for i, col_name in enumerate(df_arousal.columns.values):
+            if not any([word in col_name for word in ['recola','valence','arousal']]):
+                label_array[col_name] = col_name + '_a'
+
+        df_arousal = df_arousal.rename(columns=label_array)
+
+        #combine into one major pickle and save
+        df_final_both = pd.concat([df_valence, df_arousal, df_classes.reindex(df_arousal.index.values, method='pad')], axis=1)
+        df_final_both = df_final_both.T.groupby(level=0).first().T # de-duplicate columns
+        df_final_both.to_pickle('./pickles/' + name + '_both.pkl')
+
+        print 'finished.'
+
+
+    print "Done."
+
+
+
+def print_top(example_to_use = 'train_1'):
 
     df_ex_valence = pd.read_pickle('./pickles/' + example_to_use + '_valence.pkl')
     df_ex_arousal = pd.read_pickle('./pickles/' + example_to_use + '_arousal.pkl')
     df_ex_classes = pd.read_pickle('./pickles/' + example_to_use + '_classes.pkl')
+    df_ex_classes = pd.read_pickle('./pickles/' + example_to_use + '_both.pkl')
     print 'Valence final:'
     for i, name in enumerate(df_ex_valence.columns.values):
         print '(' + str(i) + ') ' + name
-        print df_ex_valence.head()
+        print df_ex_valence.head(n=20)
     print 'Arousal final:'
     for i, name in enumerate(df_ex_arousal.columns.values):
         print '(' + str(i) + ') ' + name
-        print df_ex_arousal.head()
+        print df_ex_arousal.head(n=20)
     print 'Classes final:'
     for i, name in enumerate(df_ex_classes.columns.values):
         print '(' + str(i) + ') ' + name
-        print df_ex_classes.head()
+        print df_ex_classes.head(n=20)
+    print 'Both final:'
+    for i, name in enumerate(df_ex_both.columns.values):
+        print '(' + str(i) + ') ' + name
+        print df_ex_both.head(n=20)
+
+
+
+def print_shape_and_vals(example_to_use = 'train_1'):
+
+    df_ex_valence = pd.read_pickle('./pickles/' + example_to_use + '_valence.pkl')
+    df_ex_arousal = pd.read_pickle('./pickles/' + example_to_use + '_arousal.pkl')
+    df_ex_classes = pd.read_pickle('./pickles/' + example_to_use + '_classes.pkl')
+    df_ex_both = pd.read_pickle('./pickles/' + example_to_use + '_both.pkl')
+
+    print 'Valence final. shape ' + str(df_ex_valence.shape)
+    for i, name in enumerate(df_ex_valence.columns.values):
+        print '\t(' + str(i) + ') ' + name
+    print 'Arousal final. shape ' + str(df_ex_arousal.shape)
+    for i, name in enumerate(df_ex_arousal.columns.values):
+        print '\t(' + str(i) + ') ' + name
+    print 'Classes final. shape ' + str(df_ex_classes.shape)
+    for i, name in enumerate(df_ex_classes.columns.values):
+        print '\t(' + str(i) + ') ' + name
+    print 'Both final. shape ' + str(df_ex_both.shape)
+    for i, name in enumerate(df_ex_both.columns.values):
+        print '\t(' + str(i) + ') ' + name
 
 
 
 if __name__ == '__main__':
     combine_save_data()
-    add_labels_to_data()
-    #print_indices()
+    add_classes_and_combine_pickles()
+    print_shape_and_vals()
