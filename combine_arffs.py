@@ -8,33 +8,33 @@ import pandas as pd
 
 
 recola_mapping = {
-        'train_1':'P16',
-        'train_2':'P21',
-        'train_3':'P23',
-        'train_4':'P25',
+        'train_1':'P39',
+        'train_2':'P23',
+        'train_3':'P41',
+        'train_4':'P46',
         'train_5':'P37',
-        'train_6':'P39',
-        'train_7':'P41',
-        'train_8':'P46',
+        'train_6':'P16',
+        'train_7':'P21',
+        'train_8':'P25',
         'train_9':'P56',
-        'dev_1':'P19',
+        'test_1':'P38',
+        'test_2':'P32',
+        'test_3':'P53',
+        'test_4':'P63',
+        'test_5':'P59',
+        'test_6':'P13',
+        'test_7':'P47',
+        'test_8':'P49',
+        'test_9':'P20',
+        'dev_1':'P45',
         'dev_2':'P26',
-        'dev_3':'P28',
-        'dev_4':'P30',
-        'dev_5':'P34',
-        'dev_6':'P42',
-        'dev_7':'P45',
-        'dev_8':'P64',
-        'dev_9':'P65',
-        'test_1':'P13',
-        'test_2':'P20',
-        'test_3':'P32',
-        'test_4':'P38',
-        'test_5':'P47',
-        'test_6':'P49',
-        'test_7':'P53',
-        'test_8':'P59',
-        'test_9':'P63'
+        'dev_3':'P64',
+        'dev_4':'P34',
+        'dev_5':'P42',
+        'dev_6':'P65',
+        'dev_7':'P30',
+        'dev_8':'P19',
+        'dev_9':'P28'
         }
 
 
@@ -43,9 +43,14 @@ def handle_recola_csv(file_path):
     if 'social' in file_path:
         df = pd.DataFrame.from_csv(file_path, index_col=False, sep=';')
         df = df.add_prefix('recola_' + file_path.split('/')[-2] + '_')
+    elif 'emotion' in file_path:
+        print '>>  IGNORE THIS FILE, THROW INTENTIONAL ERROR <<'
+        df = 'x' #pd.DataFrame.from_csv(file_path, index_col=0, sep=';')
+        df = 'x' #df.add_prefix('recola_' + file_path.split('/')[-2] + '_')
     else:
         df = pd.DataFrame.from_csv(file_path, index_col=0, sep=';')
         df = df.add_prefix('recola_' + file_path.split('/')[-2] + '_')
+
 
     print '...adding ' + file_path
     #print df.head()
@@ -87,7 +92,7 @@ def combine_save_data():
         for root, dirs, files in os.walk('./data'):
             for file in files:
 
-                if name in file:
+                if (name in file or recola_name in file) and 'arff' in file:
 
                     path = os.path.join(root, file)
                     try:
@@ -106,7 +111,7 @@ def combine_save_data():
                     except:
                         print 'ERROR READING ' + os.path.join(root, file)
 
-                if recola_name in file:
+                if (name in file or recola_name in file) and 'csv' in file:
 
                     path = os.path.join(root, file)
                     try:
