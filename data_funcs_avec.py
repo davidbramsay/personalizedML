@@ -33,6 +33,11 @@ class DataLoader:
     def __init__(self, peopleSplit='ignoreTest', dataset='both', ignoreFeats = [],
                 includeClasses=True, labels=['GoldStandard_valence','GoldStandard_arousal']):
 
+        self.iterator_ind = {}
+        self.iterator_ind['train'] = 0
+        self.iterator_ind['val'] = 0
+        self.iterator_ind['test'] = 0
+
         self.load_and_process_data(peopleSplit=peopleSplit, dataset=dataset, ignoreFeats=ignoreFeats,
                                    includeClasses=includeClasses, labels=labels)
 
@@ -97,15 +102,15 @@ class DataLoader:
                                                             self.wanted_labels, len(self.wanted_labels)==1)
 
 
-    def get_train_batch(self, batch_size, num_time_steps):
+    def get_train_batch_rand(self, batch_size, num_time_steps, verbose=False):
         #need to grab batch_size num_time_step slices of data from different people
         leng, width, _ = self.train_X.shape
-        print leng, width
+        if verbose: print leng, width
 
         return_train_x = np.empty([batch_size, num_time_steps, len(self.wanted_feats)])
         return_train_y = np.empty([batch_size, num_time_steps, len(self.wanted_labels)])
-        print return_train_x.shape
-        print return_train_y.shape
+        if verbose: print return_train_x.shape
+        if verbose: print return_train_y.shape
 
         for i in range(batch_size):
             idx = np.random.choice(leng)
@@ -115,6 +120,46 @@ class DataLoader:
             return_train_y[i]=self.train_Y[idx, idy:idy+num_time_steps, :]
 
         return return_train_x, return_train_y
+
+
+    def get_train_generator_rand(self, batch_size, num_time_steps):
+        while 1:
+            yield self.get_train_batch_rand(batch_size, num_time_steps)
+
+
+    def get_train_batch_seq(self, batch_size, num_time_steps, set='train', verbose=False, maxlen=60008):
+        #need to grab batch_size num_time_step slices of data from different people
+        return_train_x = np.empty([batch_size, num_time_steps, len(self.wanted_feats)])
+        return_train_y = np.empty([batch_size, num_time_steps, len(self.wanted_labels)])
+
+        cur_batch = self.iterator_ind[set]*batch_size
+
+        if set=='val':
+            return_train_x[i]=self.val_X[0:batch_size, cur_batch:cur_batch+num_time_steps, :]
+            return_train_y[i]=self.val_Y[0:batch_size, cur_batch:cur_batch+num_time_steps, :]
+
+        elif set=='test':
+            return_train_x[i]=self.test_X[0:batch_size, cur_batch:cur_batch+num_time_steps, :]
+            return_train_y[i]=self.test_Y[0:batch_size, cur_batch:cur_batch+num_time_steps, :]
+
+        elif set=='train':
+            return_train_x[i]=self.train_X[0:batch_size, cur_batch:cur_batch+num_time_steps, :]
+            return_train_y[i]=self.train_Y[0:batch_size, cur_batch:cur_batch+num_time_steps, :]
+
+        self.iterator_ind[set] = self.iterator_ind[set] + 1
+
+        if self.iterator[set]*batchsize + num_time_steps > maxlen:
+                i = i % maxlen
+
+        return return_train_x, return_train_y
+
+
+    def get_train_generator_seq(self, batch_size, num_time_steps, set='train'):
+
+        while 1:
+            yield self.get_train_batch_rand(batch_size, num_time_steps, set)
+
+
 
     def get_val_data(self):
         return self.val_X, self.val_Y
@@ -129,10 +174,14 @@ class DataLoader:
         self.val_df = self.val_df.fillna(0) #if dataset is already filled, won't do anything
         self.test_df = self.test_df.fillna(0) #if dataset is already filled, won't do anything
 
-    def normalize_columns(self):
+    def normalize_columns(self, norm_labels=True):
 
         #only use training data, apply to all data
-        for feat in self.wanted_feats:
+        norms = self.wanted_feats
+        if norm_labels:
+            norms.extend(self.wanted_labels)
+
+        for feat in norms:
 
             train_mean = np.mean(self.train_df[feat].dropna().tolist())
             train_std = np.std(self.train_df[feat].dropna().tolist())
@@ -179,6 +228,10 @@ def get_train_test_file_set(default='ignoreTest', dataset='both'):
         validation = ['train_9', 'dev_1', 'dev_2', 'dev_3', 'dev_4']
         test = ['dev_9','dev_8','dev_7','dev_6','dev_5']
 
+    elif default == 'quickTesting':
+        training = ['train_1','train_2']
+        validation = ['train_9']
+        test = ['dev_8']
     else:
 
         training = ['train_1', 'train_2', 'train_3', 'train_4', 'train_5', 'train_6', 'train_7', 'train_8', 'train_9']
